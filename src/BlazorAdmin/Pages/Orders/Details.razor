@@ -1,0 +1,126 @@
+﻿@inject ILogger<Details> Logger
+@inject IJSRuntime JSRuntime
+@inject IOrderService OrderService
+@inherits BlazorAdmin.Helpers.BlazorComponent
+@namespace BlazorAdmin.Pages.Orders
+
+<div class="modal @_modalClass" tabindex="-1" role="dialog" style="display:@_modalDisplay">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Details @if (_order != null)
+                    {
+                        <span>- Status: @_order.Status</span>
+                    }</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close" @onclick="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                @if (_order == null)
+                {
+                    <Spinner></Spinner>
+                }
+                else
+                {
+                    <div class="container">
+                        <div class="row">
+                            <table class="table table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Product Name</th>
+                                        <th>Units</th>
+                                        <th>Total Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach (var orderItem in _order.OrderItems)
+                                    {
+                                        <tr>
+                                            <td>@orderItem.ProductName</td>
+                                            <td>@orderItem.Units</td>
+                                            <td>@orderItem.TotalAmount</td>
+                                        </tr>
+                                    }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal" @onclick="Close">Close</button>
+                <button type="button" class="btn @ButtonClass()" data-dismiss="modal" @onclick="Approve" disabled="@IsApproved()">
+                    @if (IsApproved())
+                    {
+                        <text>Approved</text>
+                    }
+                    else
+                    {
+                        <text>Approve</text>
+                    }
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@if (_showDetailsModal)
+{
+    <div class="modal-backdrop fade show"></div>
+}
+
+@code {
+
+    [Parameter]
+    public EventCallback<string> OnSaveClick { get; set; }
+
+    private string _modalDisplay = "none;";
+    private string _modalClass = "";
+    private bool _showDetailsModal = false;
+    private Order _order = new Order();
+
+
+    public async Task Open(int id)
+    {
+        await new Css(JSRuntime).HideBodyOverflow();
+
+        _order = await OrderService.GetOrderItemsById(id);
+
+        _modalDisplay = "block;";
+        _modalClass = "Show";
+        _showDetailsModal = true;
+
+        StateHasChanged();
+    }
+
+    private async Task Approve()
+    {
+        _order = await OrderService.Aprrove(_order);
+        await OnSaveClick.InvokeAsync(null);
+        await Close();
+
+        StateHasChanged();
+    }
+
+    public async Task Close()
+    {
+        await new Css(JSRuntime).ShowBodyOverflow();
+
+        _modalDisplay = "none";
+        _modalClass = "";
+        _showDetailsModal = false;
+    }
+
+    private bool IsApproved()
+    {
+        return _order != null && _order.Status == "Approved";
+    }
+
+    private string ButtonClass()
+    {
+        return IsApproved() ? "btn-success" : "btn-primary";
+    }
+
+}
